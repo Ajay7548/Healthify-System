@@ -1,0 +1,6 @@
+email,report_date,source,hr,systolic,diastolic,glucose,cholesterol
+jane.doe@healthcare.test,2026-06-15,acme-lab,70,118,76,91,180
+not-an-email,2026-06-15,acme-lab,70,120,80,95,180
+john.smith@healthcare.test,15/06/2026,acme-lab,80,130,84,105,205
+maria.garcia@healthcare.test,2026-06-15,acme-lab,66,110,70,9999,168
+ghost.user@healthcare.test,2026-06-15,acme-lab,70,120,80,95,180
