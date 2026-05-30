@@ -12,7 +12,7 @@ function buildQuery(params) {
 
 export async function fetchUsers(params = {}) {
   const { data, meta } = await api.get(`/admin/users?${buildQuery(params)}`);
-  return { items: data, pagination: meta.pagination };
+  return { items: data, pagination: meta?.pagination ?? null };
 }
 
 export async function fetchUserDetail(userId) {
@@ -22,5 +22,5 @@ export async function fetchUserDetail(userId) {
 
 export async function fetchUserReports(userId, params = {}) {
   const { data, meta } = await api.get(`/admin/users/${userId}/reports?${buildQuery(params)}`);
-  return { items: data, pagination: meta.pagination };
+  return { items: data, pagination: meta?.pagination ?? null };
 }

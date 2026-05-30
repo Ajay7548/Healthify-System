@@ -11,5 +11,5 @@ export async function uploadCsv(file) {
 
 export async function fetchUploads({ page = 1, pageSize = 10 } = {}) {
   const { data, meta } = await api.get(`/admin/uploads?page=${page}&pageSize=${pageSize}`);
-  return { items: data, pagination: meta.pagination };
+  return { items: data, pagination: meta?.pagination ?? null };
 }

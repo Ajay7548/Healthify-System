@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { loginSchema } from '@hc/shared';
 import { useAuth } from '@/features/auth/auth-context';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { ApiError } from '@/lib/api-client';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, status, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [formError, setFormError] = useState(null);
@@ -25,6 +25,12 @@ export function LoginPage() {
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
+
+  // Already signed in (typed the URL, used the back button)? Skip the form.
+  // Placed after the hooks above so hook order stays stable across renders.
+  if (status === 'authenticated' && user) {
+    return <Navigate to={user.role === 'ADMIN' ? '/admin/users' : '/dashboard'} replace />;
+  }
 
   async function onSubmit(values) {
     setFormError(null);

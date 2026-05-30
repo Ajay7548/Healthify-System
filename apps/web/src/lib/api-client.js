@@ -89,6 +89,13 @@ export async function apiRequest(path, options = {}) {
       return parse(response); // throws the original 401 in the standard shape
     }
     response = await rawFetch(path, { ...options, __retried: true });
+
+    // Still 401 after a fresh token? The session is genuinely no good (e.g. the
+    // account was deactivated). End it rather than leaving stale tokens behind.
+    if (response.status === 401) {
+      tokenStore.clear();
+      onUnauthorized();
+    }
   }
 
   return parse(response);
