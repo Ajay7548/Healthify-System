@@ -26,7 +26,9 @@ const uploadBatchSchema = new Schema(
     insertedRows: { type: Number, default: 0 },
     skippedRows: { type: Number, default: 0 },
     failedRows: { type: Number, default: 0 },
-    errors: { type: [rowErrorSchema], default: [] },
+    // Named rowErrors (not "errors") because Mongoose reserves `errors` on a
+    // document for its own validation errors. Exposed to the API as `errors`.
+    rowErrors: { type: [rowErrorSchema], default: [] },
     finishedAt: { type: Date, default: null },
   },
   { timestamps: true },

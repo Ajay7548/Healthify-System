@@ -22,7 +22,7 @@ function toBatchDto(doc) {
     insertedRows: doc.insertedRows,
     skippedRows: doc.skippedRows,
     failedRows: doc.failedRows,
-    errors: (doc.errors ?? []).map((e) => ({
+    errors: (doc.rowErrors ?? []).map((e) => ({
       row: e.row,
       column: e.column ?? undefined,
       message: e.message,
@@ -66,7 +66,7 @@ async function finalize(
   batch.insertedRows = insertedRows;
   batch.skippedRows = skippedRows;
   batch.failedRows = errors.length;
-  batch.errors = errors.slice(0, MAX_STORED_ERRORS);
+  batch.rowErrors = errors.slice(0, MAX_STORED_ERRORS);
   batch.finishedAt = new Date();
   await batch.save();
   return toBatchDto(batch);
