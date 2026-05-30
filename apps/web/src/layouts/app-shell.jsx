@@ -1,9 +1,18 @@
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Activity, LayoutDashboard, FileText, Users, LogOut, Menu, X } from 'lucide-react';
+import { Activity, LayoutDashboard, FileText, Users, Upload, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '@/features/auth/auth-context';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
+
+function PageFallback() {
+  return (
+    <div className="flex justify-center py-16 text-muted-foreground">
+      <Spinner className="h-6 w-6 text-primary" />
+    </div>
+  );
+}
 
 // Navigation is role-driven: patients see their own data, admins see the
 // management views. Items are added to these arrays as each feature lands.
@@ -12,7 +21,10 @@ const NAV_ITEMS = {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/reports', label: 'My Reports', icon: FileText },
   ],
-  ADMIN: [{ to: '/admin/users', label: 'Patients', icon: Users }],
+  ADMIN: [
+    { to: '/admin/users', label: 'Patients', icon: Users },
+    { to: '/admin/uploads', label: 'Uploads', icon: Upload },
+  ],
 };
 
 function SidebarContent({ items, user, onLogout, onNavigate }) {
@@ -114,7 +126,9 @@ export function AppShell() {
         </header>
 
         <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <Outlet />
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>
