@@ -80,7 +80,8 @@ export async function rotateRefreshToken(presented) {
     throw new UnauthorizedError('Invalid or expired refresh token');
   }
 
-  const record = await RefreshToken.findOne({ tokenHash: hashToken(presented) });
+  const presentedHash = hashToken(presented);
+  const record = await RefreshToken.findOne({ tokenHash: presentedHash });
   if (!record) {
     throw new UnauthorizedError('Refresh token not recognized');
   }
@@ -99,9 +100,19 @@ export async function rotateRefreshToken(presented) {
 
   const newRefreshToken = await issueRefreshToken(userId, record.family);
   const newJti = jwt.decode(newRefreshToken)?.jti ?? null;
-  record.replacedBy = typeof newJti === 'string' ? newJti : null;
-  record.revokedAt = new Date();
-  await record.save();
+
+  // Atomically claim the presented token: only the first concurrent request can
+  // flip it from "live" to "rotated". If two requests race with the same token,
+  // the loser's update matches nothing — that's reuse, so revoke the family
+  // (which also kills the replacement we just minted) and force a re-login.
+  const claimed = await RefreshToken.findOneAndUpdate(
+    { tokenHash: presentedHash, revokedAt: null, replacedBy: null },
+    { revokedAt: new Date(), replacedBy: typeof newJti === 'string' ? newJti : null },
+  );
+  if (!claimed) {
+    await revokeFamily(record.family);
+    throw new UnauthorizedError('Refresh token reuse detected — please sign in again');
+  }
 
   const accessToken = signAccessToken({ id: userId, role: user.role, email: user.email });
   return { accessToken, refreshToken: newRefreshToken };

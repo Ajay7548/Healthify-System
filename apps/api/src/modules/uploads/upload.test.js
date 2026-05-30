@@ -76,6 +76,16 @@ describe('CSV ingestion', () => {
     expect(batch.errors.map((e) => e.row)).toEqual([3, 4, 5]);
   });
 
+  it('counts a row with several bad cells as a single failed row', async () => {
+    // Every metric is below its minimum -> multiple Zod issues, but one row.
+    const batch = await ingest(csv(`${patientEmail},2026-02-01,lab,1,1,1,1,1`));
+    expect(batch.totalRows).toBe(1);
+    expect(batch.failedRows).toBe(1);
+    expect(batch.errors.length).toBeGreaterThan(1); // one entry per bad cell
+    expect(batch.insertedRows).toBe(0);
+    expect(batch.status).toBe('FAILED');
+  });
+
   it('fails a file that is missing required columns', async () => {
     const batch = await ingest(Buffer.from('email,report_date\nx@test.dev,2026-01-01'));
     expect(batch.status).toBe('FAILED');

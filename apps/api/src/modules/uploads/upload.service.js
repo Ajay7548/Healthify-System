@@ -59,13 +59,16 @@ function buildReportDoc(row, userId, batchId) {
 
 async function finalize(
   batch,
-  { status, errors = [], totalRows = 0, insertedRows = 0, skippedRows = 0 },
+  { status, errors = [], totalRows = 0, insertedRows = 0, skippedRows = 0, failedRows },
 ) {
   batch.status = status;
   batch.totalRows = totalRows;
   batch.insertedRows = insertedRows;
   batch.skippedRows = skippedRows;
-  batch.failedRows = errors.length;
+  // failedRows counts distinct failed *rows*; a row with two bad cells produces
+  // two error entries but is still one failed row. Falls back to errors.length
+  // for the file-level failures (parse error, missing columns) that carry one.
+  batch.failedRows = failedRows ?? errors.length;
   batch.rowErrors = errors.slice(0, MAX_STORED_ERRORS);
   batch.finishedAt = new Date();
   await batch.save();
@@ -132,11 +135,15 @@ export async function ingestCsv({ buffer, filename, uploadedById }) {
   }
 
   const errors = [];
+  // Distinct failed rows. A row can yield several error entries (one per bad
+  // cell) but must only count once, so the batch totals reconcile with totalRows.
+  const failedRowNumbers = new Set();
   const validRows = [];
   records.forEach((record, index) => {
     const rowNumber = index + 2; // header occupies line 1
     const parsed = csvReportRowSchema.safeParse(record);
     if (!parsed.success) {
+      failedRowNumbers.add(rowNumber);
       for (const issue of parsed.error.issues) {
         errors.push({
           row: rowNumber,
@@ -160,6 +167,7 @@ export async function ingestCsv({ buffer, filename, uploadedById }) {
   for (const { rowNumber, data } of validRows) {
     const userId = userIdByEmail.get(data.email);
     if (!userId) {
+      failedRowNumbers.add(rowNumber);
       errors.push({
         row: rowNumber,
         column: 'email',
@@ -185,27 +193,38 @@ export async function ingestCsv({ buffer, filename, uploadedById }) {
   });
 
   let insertedRows = 0;
+  let writeFailures = 0;
   if (toInsert.length) {
     try {
       const result = await HealthReport.insertMany(toInsert, { ordered: false });
       insertedRows = result.length;
     } catch (error) {
-      // A concurrent import could race us to the same key; treat residual
-      // duplicate-key write errors as skips, count the rest as inserted.
+      // ordered:false keeps inserting past failures. A concurrent import could
+      // race us to the same key (duplicate-key) — those count as skips. Anything
+      // else is a genuine write failure and must land in the totals, not vanish.
       insertedRows = error.insertedDocs?.length ?? 0;
-      const writeErrors = error.writeErrors ?? [];
-      skippedRows += writeErrors.filter((w) => (w.err?.code ?? w.code) === 11000).length;
+      for (const writeError of error.writeErrors ?? []) {
+        if ((writeError.err?.code ?? writeError.code) === 11000) {
+          skippedRows += 1;
+        } else {
+          writeFailures += 1;
+          errors.push({ row: 0, message: writeError.errmsg ?? 'Failed to write row' });
+        }
+      }
     }
   }
 
+  const failedRows = failedRowNumbers.size + writeFailures;
+
   let status;
-  if (errors.length === 0) status = 'COMPLETED';
+  if (failedRows === 0) status = 'COMPLETED';
   else if (insertedRows > 0 || skippedRows > 0) status = 'PARTIAL';
   else status = 'FAILED';
 
   return finalize(batch, {
     status,
     errors,
+    failedRows,
     totalRows: records.length,
     insertedRows,
     skippedRows,
