@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.github
+**/*.log
+.pnpm-store
+**/.cache
+**/.vitest
