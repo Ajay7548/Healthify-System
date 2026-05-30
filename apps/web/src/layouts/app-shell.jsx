@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Activity, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
+import { Activity, LayoutDashboard, FileText, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '@/features/auth/auth-context';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -8,7 +8,10 @@ import { cn } from '@/lib/utils';
 // Navigation is role-driven: patients see their own data, admins see the
 // management views. Items are added to these arrays as each feature lands.
 const NAV_ITEMS = {
-  USER: [{ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+  USER: [
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/reports', label: 'My Reports', icon: FileText },
+  ],
   ADMIN: [{ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
 };
 
