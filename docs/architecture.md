@@ -71,7 +71,7 @@ sequenceDiagram
   participant DB as MongoDB
 
   SPA->>API: POST /auth/login { email, password }
-  API->>DB: find user, verify (argon2-class hash)
+  API->>DB: find user, verify (bcrypt hash)
   API->>DB: store SHA-256 hash of new refresh token
   API-->>SPA: 200 { user, accessToken, refreshToken }
   Note over SPA: tokens kept in localStorage

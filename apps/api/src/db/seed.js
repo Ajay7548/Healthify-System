@@ -73,8 +73,12 @@ function buildMetrics(baseline, monthIndex) {
 
 function buildReport(userId, email, dateStr, monthIndex, baseline) {
   const metrics = buildMetrics(baseline, monthIndex);
+  // Key `raw` by CSV column name so seeded reports share the same raw shape as
+  // CSV-uploaded ones (metrics line up with METRIC_CATALOG order).
   const raw = { email, report_date: dateStr, source: SEED_SOURCE };
-  for (const metric of metrics) raw[metric.code.toLowerCase()] = metric.value;
+  METRIC_CATALOG.forEach((def, index) => {
+    raw[def.column] = metrics[index].value;
+  });
 
   return {
     userId,
