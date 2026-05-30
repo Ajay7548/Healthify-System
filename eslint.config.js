@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import prettier from 'eslint-config-prettier';
@@ -33,8 +34,12 @@ export default [
       globals: { ...globals.browser, ...globals.node },
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
-    plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
+    plugins: { react, 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
     rules: {
+      // Count components referenced in JSX as "used" (the new JSX transform means
+      // we don't import React itself, so jsx-uses-react stays off).
+      'react/jsx-uses-vars': 'error',
+      'react/jsx-uses-react': 'off',
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
