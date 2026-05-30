@@ -20,17 +20,38 @@ REST API and MongoDB.
 | Web app | `https://<your-app>.vercel.app`   |
 | API     | `https://<your-api>.onrender.com` |
 
-**Demo accounts** (created by the seed):
-
-| Role    | Email                        | Password                                 |
-| ------- | ---------------------------- | ---------------------------------------- |
-| Patient | `jane.doe@healthcare.test`   | `Patient123!`                            |
-| Patient | `john.smith@healthcare.test` | `Patient123!` (borderline-high readings) |
-| Admin   | `admin@healthcare.test`      | `Admin123!`                              |
-
 > **Cold start:** the API runs on Render's free tier and sleeps after ~15 minutes
 > idle, so the first request after a nap can take 30–60s while it wakes. Subsequent
 > requests are fast. (A $7/mo Render instance removes the sleep entirely.)
+
+## Demo accounts
+
+`pnpm --filter @hc/api db:seed` creates the accounts below. **Passwords are
+case-sensitive.** The seed is idempotent — re-running it never changes them.
+
+**Admin** — sees the Admin Portal (patient search, detail, CSV upload):
+
+| Email                   | Password    |
+| ----------------------- | ----------- |
+| `admin@healthcare.test` | `Admin123!` |
+
+**Featured patients** — Patient Portal, each with ~6 months of report history:
+
+| Email                          | Password      | Notes                                                           |
+| ------------------------------ | ------------- | --------------------------------------------------------------- |
+| `jane.doe@healthcare.test`     | `Patient123!` | Healthy, in-range readings                                      |
+| `john.smith@healthcare.test`   | `Patient123!` | Borderline-high readings (HIGH flags + crossed reference lines) |
+| `maria.garcia@healthcare.test` | `Patient123!` | Healthy                                                         |
+
+**Filler patients** — ~27 more patients so the admin list paginates and search has
+results. All use password `Patient123!` and are emailed `firstname.lastname@healthcare.test`
+(e.g. `liam.johnson@healthcare.test`, `olivia.williams@healthcare.test`). A few are
+intentionally **inactive** to exercise the status filter.
+
+> The admin email/password come from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` in
+> `apps/api/.env` — the values above are the `.env.example` defaults. If you changed
+> them, your admin login matches what you set. The shared patient password is a demo
+> convenience (and is flagged as such in the seed).
 
 ## What it does
 
