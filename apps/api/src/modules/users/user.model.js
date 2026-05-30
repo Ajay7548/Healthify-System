@@ -14,8 +14,11 @@ const userSchema = new Schema(
   { timestamps: true },
 );
 
-// Word search across name and email backs the admin user search. A regex-prefix
-// fallback (in the repository) handles partial typeahead the text index can't.
-userSchema.index({ fullName: 'text', email: 'text' });
+// Indexes for the admin list: createdAt backs the default (newest-first) sort,
+// fullName backs the alphabetical sort. Substring search uses a case-insensitive
+// regex over name/email — fine at this scale; MongoDB Atlas Search would be the
+// production path once the user table grows large.
+userSchema.index({ createdAt: -1 });
+userSchema.index({ fullName: 1 });
 
 export const User = model('User', userSchema);

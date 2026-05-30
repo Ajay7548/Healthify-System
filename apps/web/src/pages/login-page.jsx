@@ -29,10 +29,11 @@ export function LoginPage() {
   async function onSubmit(values) {
     setFormError(null);
     try {
-      await login(values);
-      // Return the user to wherever a guard bounced them from, or the dashboard.
+      const user = await login(values);
+      // Return to wherever a guard bounced them from, else each role's home.
       const from = location.state?.from?.pathname;
-      navigate(from ?? '/dashboard', { replace: true });
+      const home = user.role === 'ADMIN' ? '/admin/users' : '/dashboard';
+      navigate(from ?? home, { replace: true });
     } catch (error) {
       setFormError(
         error instanceof ApiError ? error.message : 'Unable to sign in. Please try again.',

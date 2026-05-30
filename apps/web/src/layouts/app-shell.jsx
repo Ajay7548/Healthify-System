@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Activity, LayoutDashboard, FileText, LogOut, Menu, X } from 'lucide-react';
+import { Activity, LayoutDashboard, FileText, Users, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '@/features/auth/auth-context';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ const NAV_ITEMS = {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/reports', label: 'My Reports', icon: FileText },
   ],
-  ADMIN: [{ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+  ADMIN: [{ to: '/admin/users', label: 'Patients', icon: Users }],
 };
 
 function SidebarContent({ items, user, onLogout, onNavigate }) {

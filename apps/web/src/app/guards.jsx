@@ -25,3 +25,10 @@ export function RequireRole({ role }) {
   if (user.role !== role) return <Navigate to="/forbidden" replace />;
   return <Outlet />;
 }
+
+// Send each role to its natural home: admins manage patients, patients see their
+// own dashboard.
+export function RoleHomeRedirect() {
+  const { user } = useAuth();
+  return <Navigate to={user?.role === 'ADMIN' ? '/admin/users' : '/dashboard'} replace />;
+}
