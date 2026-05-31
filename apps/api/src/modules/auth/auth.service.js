@@ -12,8 +12,10 @@ export async function login(input) {
 
   // Run the same work whether or not the account exists so response timing
   // doesn't reveal which emails are registered. We also never say which half of
-  // the credentials was wrong.
-  if (!user || !user.isActive) {
+  // the credentials was wrong. Clients imported from a dataset have no
+  // passwordHash — they can't log in until one is set, and are rejected here
+  // (not handed to verifyPassword, which would throw on a null hash -> 500).
+  if (!user || !user.isActive || !user.passwordHash) {
     await dummyVerify();
     throw new UnauthorizedError('Invalid email or password');
   }
