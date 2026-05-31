@@ -5,5 +5,6 @@ export * from './pagination.js';
 export * from './auth.js';
 export * from './user.js';
 export * from './health-report.js';
-export * from './csv-row.js';
+export * from './upload-rows.js';
 export * from './upload.js';
+export * from './insights.js';
