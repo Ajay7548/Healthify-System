@@ -8,6 +8,10 @@ export async function listUsers(_req, res) {
   sendPaginated(res, items, pagination);
 }
 
+export async function getFacets(_req, res) {
+  sendSuccess(res, await userService.getFacets());
+}
+
 export async function getUser(_req, res) {
   const { params } = validated(res);
   sendSuccess(res, await userService.getUserDetail(params.userId));

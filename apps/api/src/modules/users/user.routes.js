@@ -15,6 +15,8 @@ const userIdParams = z.object({
 export const adminUsersRouter = Router();
 adminUsersRouter.use(authenticate, requireRole('ADMIN'));
 
+// Distinct demographic values for the user-list filter dropdowns.
+adminUsersRouter.get('/facets', userController.getFacets);
 adminUsersRouter.get('/users', validate({ query: adminUserQuerySchema }), userController.listUsers);
 adminUsersRouter.get('/users/:userId', validate({ params: userIdParams }), userController.getUser);
 adminUsersRouter.get(
