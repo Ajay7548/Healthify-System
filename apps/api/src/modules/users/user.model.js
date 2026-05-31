@@ -34,8 +34,14 @@ const userSchema = new Schema(
 // production path once the user table grows large.
 userSchema.index({ createdAt: -1 });
 userSchema.index({ fullName: 1 });
-// Stable identity for an imported client (idempotent re-import).
-userSchema.index({ clientId: 1 }, { unique: true, sparse: true });
+// Stable identity for an imported client (idempotent re-import). A partial index
+// (not sparse) is required because the field defaults to null on seeded/admin
+// accounts — sparse only skips a missing field, so many nulls would still
+// collide; the partial filter enforces uniqueness for real numeric ids only.
+userSchema.index(
+  { clientId: 1 },
+  { unique: true, partialFilterExpression: { clientId: { $type: 'number' } } },
+);
 // Back the faceted demographic filters so they stay index-supported at 5k+ rows.
 userSchema.index({ healthCondition: 1 });
 userSchema.index({ state: 1 });
