@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { flagFor } from './metric-catalog.js';
+import { flagFor, classifyCategorical, buildMetrics, METRIC_CATALOG } from './metric-catalog.js';
 import { reportDedupeKey } from './dedupe.js';
 
 describe('flagFor', () => {
@@ -15,6 +15,43 @@ describe('flagFor', () => {
   it('ignores a bound that is null (one-sided range)', () => {
     expect(flagFor(10, null, 100)).toBe('NORMAL');
     expect(flagFor(250, null, 200)).toBe('HIGH');
+  });
+});
+
+describe('classifyCategorical', () => {
+  const urine = METRIC_CATALOG.find((m) => m.code === 'UPRO');
+
+  it('maps Negative to NORMAL and Trace/Positive to HIGH', () => {
+    expect(classifyCategorical(urine, 'Negative')).toBe('NORMAL');
+    expect(classifyCategorical(urine, 'Trace')).toBe('HIGH');
+    expect(classifyCategorical(urine, 'Positive')).toBe('HIGH');
+  });
+  it('falls back to NORMAL for an unrecognized label', () => {
+    expect(classifyCategorical(urine, 'Inconclusive')).toBe('NORMAL');
+  });
+});
+
+describe('buildMetrics', () => {
+  it('builds numeric and categorical metrics with the right flags', () => {
+    const metrics = buildMetrics({
+      hemoglobin: 10, // < 12 -> LOW
+      vitamin_d: 50,
+      cholesterol: 250, // > 200 -> HIGH
+      blood_sugar_fasting: 90,
+      creatinine: 0.9,
+      urine_protein: 'Positive',
+      bmi: 22,
+    });
+    expect(metrics).toHaveLength(METRIC_CATALOG.length);
+
+    const hgb = metrics.find((m) => m.code === 'HGB');
+    expect(hgb).toMatchObject({ kind: 'NUMERIC', value: 10, valueText: null, flag: 'LOW' });
+
+    const chol = metrics.find((m) => m.code === 'CHOL');
+    expect(chol.flag).toBe('HIGH');
+
+    const upro = metrics.find((m) => m.code === 'UPRO');
+    expect(upro).toMatchObject({ kind: 'CATEGORICAL', value: null, valueText: 'Positive', flag: 'HIGH' });
   });
 });
 

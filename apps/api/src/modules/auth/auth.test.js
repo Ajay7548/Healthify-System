@@ -43,6 +43,21 @@ describe('auth', () => {
     expect(res.body.error.message).toBe('Invalid email or password');
   });
 
+  it('rejects login for an imported client with no password (401, not 500)', async () => {
+    await User.create({
+      email: 'imported@test.dev',
+      fullName: 'Imported Client',
+      role: 'USER',
+      isActive: true,
+      // no passwordHash
+    });
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'imported@test.dev', password: 'anything' });
+    expect(res.status).toBe(401);
+    expect(res.body.error.message).toBe('Invalid email or password');
+  });
+
   it('validates the request body', async () => {
     const res = await request(app).post('/api/v1/auth/login').send({ email: 'nope', password: '' });
     expect(res.status).toBe(400);

@@ -8,6 +8,8 @@ import {
   adminUserListItemSchema,
   adminUserDetailSchema,
   uploadBatchSchema,
+  insightsSchema,
+  facetsSchema,
 } from '@hc/shared';
 import { createApp } from '../app.js';
 import { setupTestDb, teardownTestDb, clearCollections } from './db.js';
@@ -54,12 +56,14 @@ beforeEach(async () => {
     summary: null,
     metrics: [
       {
-        code: 'HR',
-        label: 'Heart Rate',
-        value: 72,
-        unit: 'bpm',
-        refLow: 60,
-        refHigh: 100,
+        code: 'HGB',
+        label: 'Hemoglobin',
+        kind: 'NUMERIC',
+        value: 14,
+        valueText: null,
+        unit: 'g/dL',
+        refLow: 12,
+        refHigh: 17,
         flag: 'NORMAL',
       },
     ],
@@ -111,13 +115,23 @@ describe('API responses conform to the @hc/shared contract', () => {
   it('uploads: batch summary', async () => {
     const token = await bearer(admin);
     const csv = Buffer.from(
-      'email,report_date,source,hr,systolic,diastolic,glucose,cholesterol\n' +
-        'pat@test.dev,2026-03-01,lab,72,118,78,90,180\n',
+      'email,report_date,hemoglobin,vitamin_d,cholesterol,blood_sugar_fasting,creatinine,urine_protein,bmi,doctor_notes\n' +
+        'pat@test.dev,2026-03-01,14,50,180,90,0.9,Negative,22,Routine\n',
     );
     const res = await request(app)
       .post('/api/v1/admin/reports/upload')
       .set('Authorization', token)
       .attach('file', csv, 'reports.csv');
     expect(() => uploadBatchSchema.parse(res.body.data)).not.toThrow();
+  });
+
+  it('admin: insights + facets', async () => {
+    const token = await bearer(admin);
+
+    const insights = await request(app).get('/api/v1/admin/insights').set('Authorization', token);
+    expect(() => insightsSchema.parse(insights.body.data)).not.toThrow();
+
+    const facets = await request(app).get('/api/v1/admin/facets').set('Authorization', token);
+    expect(() => facetsSchema.parse(facets.body.data)).not.toThrow();
   });
 });
