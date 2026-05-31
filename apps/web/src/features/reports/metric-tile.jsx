@@ -24,20 +24,30 @@ function Delta({ delta }) {
 }
 
 export function MetricTile({ metric, delta }) {
+  const categorical = metric.kind === 'CATEGORICAL';
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm text-muted-foreground">{metric.label}</p>
         <Badge tone={flagTone(metric.flag)}>{metric.flag.toLowerCase()}</Badge>
       </div>
-      <div className="mt-2 flex items-baseline gap-1">
-        <span className="text-2xl font-semibold tabular-nums">{metric.value}</span>
-        <span className="text-sm text-muted-foreground">{metric.unit}</span>
-      </div>
-      <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-        <span>{referenceLabel(metric)}</span>
-        <Delta delta={delta} />
-      </div>
+      {categorical ? (
+        // No value/unit or numeric reference range for a qualitative result.
+        <div className="mt-2 flex items-baseline">
+          <span className="text-2xl font-semibold">{metric.valueText ?? '—'}</span>
+        </div>
+      ) : (
+        <>
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="text-2xl font-semibold tabular-nums">{metric.value}</span>
+            <span className="text-sm text-muted-foreground">{metric.unit}</span>
+          </div>
+          <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+            <span>{referenceLabel(metric)}</span>
+            <Delta delta={delta} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

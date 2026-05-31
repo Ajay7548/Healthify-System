@@ -16,7 +16,9 @@ import { formatMonth } from '@/lib/format';
 // Plots one metric's history with its reference range drawn in. `reports` is in
 // chronological (oldest-first) order so the line reads left-to-right.
 export function HealthTrendChart({ reports }) {
-  const available = reports.at(-1)?.metrics ?? [];
+  // Only numeric metrics can be plotted on a value axis; categorical results
+  // (e.g. urine protein) are shown in the tiles and history table instead.
+  const available = (reports.at(-1)?.metrics ?? []).filter((m) => m.kind !== 'CATEGORICAL');
   const [selectedCode, setSelectedCode] = useState(available[0]?.code);
 
   const selected = available.find((m) => m.code === selectedCode) ?? available[0];

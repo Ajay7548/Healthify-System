@@ -54,7 +54,8 @@ export function AdminUserDetailPage() {
                   <CardTitle>{user.fullName}</CardTitle>
                   <p className="text-sm text-muted-foreground">{user.email}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
+                  {user.healthCondition ? <Badge tone="accent">{user.healthCondition}</Badge> : null}
                   <Badge tone={user.role === 'ADMIN' ? 'accent' : 'neutral'}>
                     {user.role === 'ADMIN' ? 'Admin' : 'Patient'}
                   </Badge>
@@ -65,13 +66,19 @@ export function AdminUserDetailPage() {
               </CardHeader>
               <CardContent>
                 <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  <Field label="MRN" value={user.mrn} />
-                  <Field
-                    label="Date of birth"
-                    value={user.dateOfBirth ? formatDate(user.dateOfBirth) : '—'}
-                  />
+                  <Field label="Age" value={user.age} />
+                  <Field label="Gender" value={user.gender} />
+                  <Field label="City" value={user.city} />
+                  <Field label="State" value={user.state} />
+                  <Field label="Occupation" value={user.occupation} />
+                  <Field label="Beauty goal" value={user.beautyGoal} />
+                  <Field label="Mobile" value={user.mobile} />
                   <Field label="Reports" value={user.reportCount} />
                   <Field label="Member since" value={formatDate(user.createdAt)} />
+                  {user.mrn ? <Field label="MRN" value={user.mrn} /> : null}
+                  {user.dateOfBirth ? (
+                    <Field label="Date of birth" value={formatDate(user.dateOfBirth)} />
+                  ) : null}
                 </dl>
               </CardContent>
             </Card>

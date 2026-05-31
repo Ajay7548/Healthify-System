@@ -22,7 +22,9 @@ export function ReportsTable({ reports }) {
             {columns.map((column) => (
               <th key={column.code} className="px-3 py-2 text-right font-medium">
                 {column.label}
-                <span className="ml-1 font-normal normal-case">({column.unit})</span>
+                {column.unit ? (
+                  <span className="ml-1 font-normal normal-case">({column.unit})</span>
+                ) : null}
               </th>
             ))}
           </tr>
@@ -42,7 +44,7 @@ export function ReportsTable({ reports }) {
                   key={metric.code}
                   className={cn('px-3 py-2.5 text-right tabular-nums', flagColor[metric.flag])}
                 >
-                  {metric.value}
+                  {metric.kind === 'CATEGORICAL' ? metric.valueText : metric.value}
                 </td>
               ))}
             </tr>

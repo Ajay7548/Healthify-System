@@ -21,10 +21,16 @@ export function LatestReportCard({ report, previous }) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {report.metrics.map((metric) => {
             const prev = previousByCode.get(metric.code);
-            const delta = prev == null ? null : metric.value - prev;
+            const delta = prev == null || metric.value == null ? null : metric.value - prev;
             return <MetricTile key={metric.code} metric={metric} delta={delta} />;
           })}
         </div>
+        {report.summary ? (
+          <p className="mt-4 rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Clinician note: </span>
+            {report.summary}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

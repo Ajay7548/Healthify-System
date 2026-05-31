@@ -17,7 +17,9 @@ export function UsersTable({ users }) {
         <thead>
           <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
             <th className="px-3 py-2 font-medium">Patient</th>
-            <th className="px-3 py-2 font-medium">Role</th>
+            <th className="px-3 py-2 font-medium">Age / Sex</th>
+            <th className="px-3 py-2 font-medium">Location</th>
+            <th className="px-3 py-2 font-medium">Condition</th>
             <th className="px-3 py-2 font-medium">Status</th>
             <th className="px-3 py-2 font-medium">Last report</th>
           </tr>
@@ -38,14 +40,21 @@ export function UsersTable({ users }) {
               className="cursor-pointer border-b border-border/60 last:border-0 hover:bg-muted/40"
             >
               <td className="px-3 py-3">
-                <p className="font-medium">{user.fullName}</p>
+                <p className="flex items-center gap-2 font-medium">
+                  {user.fullName}
+                  {user.role === 'ADMIN' ? <Badge tone="accent">Admin</Badge> : null}
+                </p>
                 <p className="text-xs text-muted-foreground">{user.email}</p>
               </td>
-              <td className="px-3 py-3">
-                <Badge tone={user.role === 'ADMIN' ? 'accent' : 'neutral'}>
-                  {user.role === 'ADMIN' ? 'Admin' : 'Patient'}
-                </Badge>
+              <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">
+                {user.age ?? '—'}
+                {user.gender ? ` · ${user.gender}` : ''}
               </td>
+              <td className="px-3 py-3">
+                <p>{user.city ?? '—'}</p>
+                {user.state ? <p className="text-xs text-muted-foreground">{user.state}</p> : null}
+              </td>
+              <td className="px-3 py-3 text-muted-foreground">{user.healthCondition ?? '—'}</td>
               <td className="px-3 py-3">
                 <Badge tone={user.isActive ? 'normal' : 'neutral'}>
                   {user.isActive ? 'Active' : 'Inactive'}
