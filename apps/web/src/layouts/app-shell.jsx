@@ -1,6 +1,16 @@
 import { Suspense, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Activity, LayoutDashboard, FileText, Users, Upload, LogOut, Menu, X } from 'lucide-react';
+import {
+  Activity,
+  LayoutDashboard,
+  FileText,
+  Users,
+  Upload,
+  BarChart3,
+  LogOut,
+  Menu,
+  X,
+} from 'lucide-react';
 import { useAuth } from '@/features/auth/auth-context';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -22,6 +32,7 @@ const NAV_ITEMS = {
     { to: '/reports', label: 'My Reports', icon: FileText },
   ],
   ADMIN: [
+    { to: '/admin/insights', label: 'Insights', icon: BarChart3 },
     { to: '/admin/users', label: 'Patients', icon: Users },
     { to: '/admin/uploads', label: 'Uploads', icon: Upload },
   ],

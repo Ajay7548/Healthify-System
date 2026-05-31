@@ -19,6 +19,7 @@ const AdminUserDetailPage = lazyPage(
   'AdminUserDetailPage',
 );
 const AdminUploadsPage = lazyPage(() => import('@/pages/admin/uploads-page'), 'AdminUploadsPage');
+const AdminInsightsPage = lazyPage(() => import('@/pages/admin/insights-page'), 'AdminInsightsPage');
 
 // Route tree. The authenticated branch shares the AppShell; admin-only routes
 // sit behind an additional RequireRole guard.
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
           {
             element: <RequireRole role="ADMIN" />,
             children: [
+              { path: '/admin/insights', element: <AdminInsightsPage /> },
               { path: '/admin/users', element: <AdminUsersPage /> },
               { path: '/admin/users/:userId', element: <AdminUserDetailPage /> },
               { path: '/admin/uploads', element: <AdminUploadsPage /> },
