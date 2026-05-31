@@ -15,6 +15,11 @@ export async function fetchUsers(params = {}) {
   return { items: data, pagination: meta?.pagination ?? null };
 }
 
+export async function fetchFacets() {
+  const { data } = await api.get('/admin/facets');
+  return data;
+}
+
 export async function fetchUserDetail(userId) {
   const { data } = await api.get(`/admin/users/${userId}`);
   return data;

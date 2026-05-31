@@ -9,6 +9,15 @@ export function useUsers(params) {
   });
 }
 
+export function useFacets() {
+  return useQuery({
+    queryKey: ['admin', 'facets'],
+    queryFn: adminApi.fetchFacets,
+    // Distinct demographic values change rarely — cache for the session.
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useUserDetail(userId) {
   return useQuery({
     queryKey: ['admin', 'user', userId],
