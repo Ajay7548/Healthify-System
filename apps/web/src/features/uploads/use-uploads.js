@@ -9,15 +9,17 @@ export function useUploads(params) {
   });
 }
 
-export function useUploadCsv() {
+export function useUploadDataset() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: uploadsApi.uploadCsv,
+    mutationFn: uploadsApi.uploadDataset,
     onSuccess: () => {
-      // An import can change the audit log, every "last report" date, and any
-      // open report view — refresh all three.
+      // An import can change the audit log, the client list + its facets, the
+      // insights aggregates, every "last report" date, and any open report view.
       queryClient.invalidateQueries({ queryKey: ['admin', 'uploads'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'facets'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'insights'] });
       queryClient.invalidateQueries({ queryKey: ['reports'] });
     },
   });

@@ -1,6 +1,6 @@
 import { api } from '@/lib/api-client';
 
-export async function uploadCsv(file) {
+export async function uploadDataset(file) {
   const form = new FormData();
   form.append('file', file);
   // FormData body: the api client leaves Content-Type unset so the browser adds

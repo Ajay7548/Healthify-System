@@ -52,12 +52,20 @@ export function UploadsTable({ batches }) {
                 {isOpen ? (
                   <tr className="border-b border-border/60">
                     <td colSpan={6} className="bg-muted/30 px-4 py-3">
+                      {batch.clientsCreated > 0 || batch.clientsUpdated > 0 ? (
+                        <p className="mb-2 text-sm text-muted-foreground">
+                          Clients: {batch.clientsCreated} added, {batch.clientsUpdated} updated
+                        </p>
+                      ) : null}
                       {batch.errors.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No row errors recorded.</p>
                       ) : (
                         <ul className="space-y-1 text-sm">
                           {batch.errors.map((error, index) => (
                             <li key={`${error.row}-${index}`}>
+                              {error.sheet ? (
+                                <span className="text-muted-foreground">[{error.sheet}] </span>
+                              ) : null}
                               <span className="font-medium tabular-nums">Row {error.row}</span>
                               {error.column ? (
                                 <span className="text-muted-foreground"> ({error.column})</span>

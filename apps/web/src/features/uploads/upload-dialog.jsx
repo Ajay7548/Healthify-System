@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Upload } from 'lucide-react';
-import { CSV_REQUIRED_HEADERS } from '@hc/shared';
+import { HEALTH_REPORT_HEADERS } from '@hc/shared';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -12,12 +12,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useUploadCsv } from './use-uploads';
+import { useUploadDataset } from './use-uploads';
 import { UploadSummary } from './upload-summary';
 
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES = 10 * 1024 * 1024;
 
-// Naive split for the preview only — the server does the real, quote-aware parse.
+// Naive split for the CSV preview only — the server does the real, quote-aware
+// parse. An .xlsx is binary, so it's previewed as a note rather than a table.
 function parsePreview(text) {
   const lines = text
     .split(/\r?\n/)
@@ -28,12 +29,12 @@ function parsePreview(text) {
   return { headers: rows[0], body: rows.slice(1) };
 }
 
-export function CsvUploadDialog() {
+export function UploadDialog() {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [clientError, setClientError] = useState(null);
-  const mutation = useUploadCsv();
+  const mutation = useUploadDataset();
 
   function reset() {
     setFile(null);
@@ -55,38 +56,45 @@ export function CsvUploadDialog() {
       setFile(null);
       return;
     }
-    if (!selected.name.toLowerCase().endsWith('.csv')) {
-      setClientError('Please choose a .csv file.');
+    const name = selected.name.toLowerCase();
+    if (!name.endsWith('.csv') && !name.endsWith('.xlsx')) {
+      setClientError('Please choose a .csv or .xlsx file.');
       setFile(null);
       return;
     }
     if (selected.size > MAX_BYTES) {
-      setClientError('That file is larger than the 5 MB limit.');
+      setClientError('That file is larger than the 10 MB limit.');
       setFile(null);
       return;
     }
     setFile(selected);
-    selected
-      .text()
-      .then((text) => setPreview(parsePreview(text)))
-      .catch(() => setPreview(null));
+    // Only CSV can be previewed in the browser; .xlsx is parsed server-side.
+    if (name.endsWith('.csv')) {
+      selected
+        .text()
+        .then((text) => setPreview(parsePreview(text)))
+        .catch(() => setPreview(null));
+    }
   }
 
   const result = mutation.data;
+  const isXlsx = file?.name.toLowerCase().endsWith('.xlsx');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <Upload className="h-4 w-4" aria-hidden="true" />
-          Upload CSV
+          Upload data
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Upload health reports</DialogTitle>
           <DialogDescription>
-            A CSV with columns: {CSV_REQUIRED_HEADERS.join(', ')}.
+            An Excel workbook with <code>clients</code> and <code>health_reports</code> sheets, or a
+            health-report CSV ({HEALTH_REPORT_HEADERS.join(', ')}). Reports link to a client by{' '}
+            <code>client_id</code>.
           </DialogDescription>
         </DialogHeader>
 
@@ -106,12 +114,19 @@ export function CsvUploadDialog() {
           <div className="space-y-4">
             <input
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
               className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary-hover"
             />
 
             {clientError ? <p className="text-sm text-danger">{clientError}</p> : null}
+
+            {isXlsx ? (
+              <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                Excel workbook selected — the server will import the <code>clients</code> and{' '}
+                <code>health_reports</code> sheets.
+              </p>
+            ) : null}
 
             {preview ? (
               <div className="overflow-x-auto rounded-md border border-border">
@@ -137,9 +152,7 @@ export function CsvUploadDialog() {
                     ))}
                   </tbody>
                 </table>
-                <p className="px-2 py-1.5 text-xs text-muted-foreground">
-                  Preview of the first rows.
-                </p>
+                <p className="px-2 py-1.5 text-xs text-muted-foreground">Preview of the first rows.</p>
               </div>
             ) : null}
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useUploads } from '@/features/uploads/use-uploads';
-import { CsvUploadDialog } from '@/features/uploads/csv-upload-dialog';
+import { UploadDialog } from '@/features/uploads/upload-dialog';
 import { UploadsTable } from '@/features/uploads/uploads-table';
 import { PageHeader } from '@/components/common/page-header';
 import { Pagination } from '@/components/common/pagination';
@@ -20,8 +20,8 @@ export function AdminUploadsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Uploads"
-        description="Import patient health reports from CSV."
-        actions={<CsvUploadDialog />}
+        description="Import clients and health reports from an Excel workbook or CSV."
+        actions={<UploadDialog />}
       />
 
       <Card>
@@ -40,7 +40,7 @@ export function AdminUploadsPage() {
               </div>
             }
             emptyTitle="No uploads yet"
-            emptyMessage="Use “Upload CSV” to import your first batch of reports."
+            emptyMessage="Use “Upload data” to import your first workbook or CSV."
           >
             <UploadsTable batches={items} />
           </DataState>

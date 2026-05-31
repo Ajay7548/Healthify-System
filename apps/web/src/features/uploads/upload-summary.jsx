@@ -24,7 +24,13 @@ export function UploadSummary({ batch }) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone={statusTone[batch.status]}>{batch.status.toLowerCase()}</Badge>
-        <Stat label="inserted" value={batch.insertedRows} tone="bg-emerald-500" />
+        {batch.clientsCreated > 0 || batch.clientsUpdated > 0 ? (
+          <>
+            <Stat label="clients added" value={batch.clientsCreated} tone="bg-teal-500" />
+            <Stat label="clients updated" value={batch.clientsUpdated} tone="bg-sky-500" />
+          </>
+        ) : null}
+        <Stat label="reports inserted" value={batch.insertedRows} tone="bg-emerald-500" />
         <Stat label="skipped" value={batch.skippedRows} tone="bg-slate-400" />
         <Stat label="failed" value={batch.failedRows} tone="bg-red-500" />
       </div>
@@ -34,6 +40,7 @@ export function UploadSummary({ batch }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Sheet</th>
                 <th className="px-3 py-2 font-medium">Row</th>
                 <th className="px-3 py-2 font-medium">Field</th>
                 <th className="px-3 py-2 font-medium">Problem</th>
@@ -45,6 +52,7 @@ export function UploadSummary({ batch }) {
                   key={`${error.row}-${index}`}
                   className="border-b border-border/60 last:border-0"
                 >
+                  <td className="px-3 py-2 text-muted-foreground">{error.sheet ?? '—'}</td>
                   <td className="px-3 py-2 tabular-nums">{error.row}</td>
                   <td className="px-3 py-2 text-muted-foreground">{error.column ?? '—'}</td>
                   <td className="px-3 py-2">{error.message}</td>
