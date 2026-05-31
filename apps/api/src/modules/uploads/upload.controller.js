@@ -5,9 +5,9 @@ import * as uploadService from './upload.service.js';
 
 export async function uploadReports(req, res) {
   if (!req.file) {
-    throw new BadRequestError('No CSV file was provided (form field name must be "file")');
+    throw new BadRequestError('No file was provided (form field name must be "file")');
   }
-  const batch = await uploadService.ingestCsv({
+  const batch = await uploadService.ingestUpload({
     buffer: req.file.buffer,
     filename: req.file.originalname,
     uploadedById: req.user.id,

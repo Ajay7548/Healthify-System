@@ -11,8 +11,10 @@ export function toReportDto(doc) {
     metrics: (doc.metrics ?? []).map((metric) => ({
       code: metric.code,
       label: metric.label,
-      value: metric.value,
-      unit: metric.unit,
+      kind: metric.kind ?? 'NUMERIC',
+      value: metric.value ?? null,
+      valueText: metric.valueText ?? null,
+      unit: metric.unit ?? '',
       refLow: metric.refLow ?? null,
       refHigh: metric.refHigh ?? null,
       flag: metric.flag,

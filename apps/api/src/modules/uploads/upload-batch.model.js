@@ -2,6 +2,8 @@ import { Schema, model } from 'mongoose';
 
 const rowErrorSchema = new Schema(
   {
+    // Which worksheet the row came from (xlsx has clients + health_reports).
+    sheet: { type: String },
     row: { type: Number, required: true },
     column: { type: String },
     message: { type: String, required: true },
@@ -9,9 +11,11 @@ const rowErrorSchema = new Schema(
   { _id: false },
 );
 
-// An audit record for one CSV import. Created the moment an upload starts (so a
-// crash mid-parse still leaves a trace) and finalized with the per-row outcome,
-// which is what makes a failed import debuggable instead of mysterious.
+// An audit record for one upload (CSV or xlsx). Created the moment an upload
+// starts (so a crash mid-parse still leaves a trace) and finalized with the
+// per-row outcome, which is what makes a failed import debuggable instead of
+// mysterious. Client counts come from the clients sheet; the row counts below
+// are health reports.
 const uploadBatchSchema = new Schema(
   {
     filename: { type: String, required: true },
@@ -22,6 +26,8 @@ const uploadBatchSchema = new Schema(
       default: 'PROCESSING',
       required: true,
     },
+    clientsCreated: { type: Number, default: 0 },
+    clientsUpdated: { type: Number, default: 0 },
     totalRows: { type: Number, default: 0 },
     insertedRows: { type: Number, default: 0 },
     skippedRows: { type: Number, default: 0 },
