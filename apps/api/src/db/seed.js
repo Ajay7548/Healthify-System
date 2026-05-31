@@ -2,40 +2,87 @@ import { connectToDatabase, disconnectFromDatabase, syncIndexes } from '../confi
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import { hashPassword } from '../common/password.js';
-import { METRIC_CATALOG, flagFor } from '../common/metric-catalog.js';
+import { buildMetrics } from '../common/metric-catalog.js';
 import { reportDedupeKey } from '../common/dedupe.js';
 import { User } from '../modules/users/user.model.js';
 import { HealthReport } from '../modules/reports/health-report.model.js';
 
-// One shared password for every demo patient — printed at the end so a reviewer
-// can log in immediately. Real accounts would never share a password.
+// A small, hand-crafted demo dataset so the app has something to show out of the
+// box. The company's full dataset is loaded separately through the admin upload
+// (Uploads -> Upload data). One shared password for every demo patient, printed
+// at the end so a reviewer can log in immediately.
 const PATIENT_PASSWORD = 'Patient123!';
 const SEED_SOURCE = 'seed-clinic';
 
 // Three "featured" patients get six months of history so the dashboard charts
 // have a real trend to draw. John sits in borderline-high territory on purpose
-// so the HIGH flags and reference ranges are visible in the UI.
+// so HIGH/LOW flags and reference ranges are visible in the UI.
 const FEATURED_PATIENTS = [
   {
     email: 'jane.doe@healthcare.test',
     fullName: 'Jane Doe',
     dateOfBirth: '1985-04-12',
     mrn: 'MRN-1001',
-    baseline: { hr: 72, systolic: 118, diastolic: 78, glucose: 92, cholesterol: 185 },
+    city: 'Pune',
+    state: 'Maharashtra',
+    age: 41,
+    gender: 'Female',
+    occupation: 'Teacher',
+    healthCondition: 'Healthy',
+    beautyGoal: 'Fitness',
+    baseline: {
+      hemoglobin: 13.6,
+      vitamin_d: 55,
+      cholesterol: 185,
+      blood_sugar_fasting: 92,
+      creatinine: 0.9,
+      bmi: 22.5,
+      urine: 'Negative',
+    },
   },
   {
     email: 'john.smith@healthcare.test',
     fullName: 'John Smith',
     dateOfBirth: '1978-09-30',
     mrn: 'MRN-1002',
-    baseline: { hr: 84, systolic: 134, diastolic: 86, glucose: 110, cholesterol: 215 },
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    age: 47,
+    gender: 'Male',
+    occupation: 'Manager',
+    healthCondition: 'High Cholesterol',
+    beautyGoal: 'Weight Loss',
+    baseline: {
+      hemoglobin: 14.2,
+      vitamin_d: 24, // < 30 -> LOW
+      cholesterol: 224, // > 200 -> HIGH
+      blood_sugar_fasting: 116, // > 99 -> HIGH
+      creatinine: 1.15,
+      bmi: 29.4, // > 24.9 -> HIGH
+      urine: 'Trace', // -> HIGH
+    },
   },
   {
     email: 'maria.garcia@healthcare.test',
     fullName: 'Maria Garcia',
     dateOfBirth: '1992-01-22',
     mrn: 'MRN-1003',
-    baseline: { hr: 65, systolic: 110, diastolic: 70, glucose: 85, cholesterol: 170 },
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    age: 34,
+    gender: 'Female',
+    occupation: 'Engineer',
+    healthCondition: 'Healthy',
+    beautyGoal: 'Skin Glow',
+    baseline: {
+      hemoglobin: 13.1,
+      vitamin_d: 62,
+      cholesterol: 172,
+      blood_sugar_fasting: 86,
+      creatinine: 0.8,
+      bmi: 21.3,
+      urine: 'Negative',
+    },
   },
 ];
 
@@ -48,45 +95,42 @@ const REPORT_MONTHS = [
   '2026-04-15',
 ];
 
-const METRIC_AMPLITUDE = { hr: 5, systolic: 6, diastolic: 4, glucose: 6, cholesterol: 10 };
+// Per-metric month-to-month wobble + the decimal precision a real lab reports at.
+const METRIC_VARIATION = {
+  hemoglobin: { amplitude: 0.6, decimals: 1 },
+  vitamin_d: { amplitude: 8, decimals: 0 },
+  cholesterol: { amplitude: 12, decimals: 0 },
+  blood_sugar_fasting: { amplitude: 8, decimals: 0 },
+  creatinine: { amplitude: 0.12, decimals: 2 },
+  bmi: { amplitude: 0.8, decimals: 1 },
+};
 
 // Deterministic month-to-month variation so re-seeding always produces the same
 // numbers (stable charts, reproducible demos) without random noise.
-function vary(base, monthIndex, amplitude) {
-  return Math.round(base + amplitude * Math.sin(monthIndex * 1.3));
+function vary(base, monthIndex, amplitude, decimals) {
+  const factor = 10 ** decimals;
+  return Math.round((base + amplitude * Math.sin(monthIndex * 1.3)) * factor) / factor;
 }
 
-function buildMetrics(baseline, monthIndex) {
-  return METRIC_CATALOG.map((def) => {
-    const value = vary(baseline[def.column] ?? 0, monthIndex, METRIC_AMPLITUDE[def.column] ?? 0);
-    return {
-      code: def.code,
-      label: def.label,
-      value,
-      unit: def.unit,
-      refLow: def.refLow,
-      refHigh: def.refHigh,
-      flag: flagFor(value, def.refLow, def.refHigh),
-    };
-  });
+function buildRow(baseline, monthIndex) {
+  const row = { urine_protein: baseline.urine };
+  for (const [column, { amplitude, decimals }] of Object.entries(METRIC_VARIATION)) {
+    row[column] = vary(baseline[column], monthIndex, amplitude, decimals);
+  }
+  return row;
 }
 
 function buildReport(userId, email, dateStr, monthIndex, baseline) {
-  const metrics = buildMetrics(baseline, monthIndex);
-  // Key `raw` by CSV column name so seeded reports share the same raw shape as
-  // CSV-uploaded ones (metrics line up with METRIC_CATALOG order).
-  const raw = { email, report_date: dateStr, source: SEED_SOURCE };
-  METRIC_CATALOG.forEach((def, index) => {
-    raw[def.column] = metrics[index].value;
-  });
-
+  const row = buildRow(baseline, monthIndex);
   return {
     userId,
     reportDate: new Date(dateStr),
     source: SEED_SOURCE,
     summary: `Routine check-up on ${dateStr}`,
-    metrics,
-    raw,
+    metrics: buildMetrics(row),
+    // Key `raw` by dataset column name so seeded reports share the same raw shape
+    // as uploaded ones.
+    raw: { email, report_date: dateStr, source: SEED_SOURCE, ...row },
     uploadBatchId: null,
     dedupeKey: reportDedupeKey(email, dateStr, SEED_SOURCE),
   };
@@ -109,66 +153,38 @@ async function ensureReport(report) {
   return Boolean(result.upsertedCount);
 }
 
-// A pool of filler patients so the admin list paginates and search has something
-// to find. One recent report each — enough to show a "last report" date.
+// A pool of filler patients so the admin list paginates and the filters/insights
+// have spread. One recent report each — enough to show a "last report" date.
 const FILLER_FIRST_NAMES = [
-  'Liam',
-  'Olivia',
-  'Noah',
-  'Emma',
-  'Oliver',
-  'Ava',
-  'Elijah',
-  'Sophia',
-  'James',
-  'Isabella',
-  'William',
-  'Mia',
-  'Henry',
-  'Amelia',
-  'Lucas',
-  'Harper',
-  'Benjamin',
-  'Evelyn',
-  'Theodore',
-  'Abigail',
-  'Jack',
-  'Ella',
-  'Leo',
-  'Scarlett',
-  'Daniel',
-  'Grace',
-  'Owen',
+  'Liam', 'Olivia', 'Noah', 'Emma', 'Oliver', 'Ava', 'Elijah', 'Sophia', 'James',
+  'Isabella', 'William', 'Mia', 'Henry', 'Amelia', 'Lucas', 'Harper', 'Benjamin',
+  'Evelyn', 'Theodore', 'Abigail', 'Jack', 'Ella', 'Leo', 'Scarlett', 'Daniel',
+  'Grace', 'Owen',
 ];
 const FILLER_LAST_NAMES = [
-  'Johnson',
-  'Williams',
-  'Brown',
-  'Jones',
-  'Miller',
-  'Davis',
-  'Wilson',
-  'Anderson',
-  'Taylor',
-  'Thomas',
-  'Moore',
-  'Jackson',
-  'Martin',
-  'Lee',
-  'Walker',
-  'Hall',
-  'Allen',
-  'Young',
-  'King',
-  'Wright',
-  'Scott',
-  'Green',
-  'Baker',
-  'Adams',
-  'Nelson',
-  'Hill',
+  'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Wilson', 'Anderson',
+  'Taylor', 'Thomas', 'Moore', 'Jackson', 'Martin', 'Lee', 'Walker', 'Hall', 'Allen',
+  'Young', 'King', 'Wright', 'Scott', 'Green', 'Baker', 'Adams', 'Nelson', 'Hill',
   'Campbell',
 ];
+const CITIES = ['Pune', 'Mumbai', 'Delhi', 'Bengaluru', 'Chennai', 'Kolkata', 'Hyderabad', 'Ahmedabad', 'Kochi', 'Indore'];
+const STATES = ['Maharashtra', 'Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'West Bengal', 'Telangana', 'Gujarat', 'Kerala', 'Madhya Pradesh'];
+const CONDITIONS = ['Healthy', 'Diabetes', 'Hypertension', 'Obesity', 'Thyroid', 'PCOS', 'Anemia', 'High Cholesterol', 'Vitamin D Deficiency'];
+const GOALS = ['Fitness', 'Weight Loss', 'Skin Glow', 'Hair Care', 'Anti Aging', 'Stress Management', 'Acne Treatment'];
+const OCCUPATIONS = ['Engineer', 'Teacher', 'Doctor', 'Manager', 'Business', 'Student'];
+const URINE_CYCLE = ['Negative', 'Negative', 'Trace', 'Positive'];
+
+function fillerBaseline(i) {
+  return {
+    hemoglobin: 12.4 + (i % 5) * 0.8,
+    vitamin_d: 26 + (i % 6) * 9,
+    cholesterol: 168 + (i % 8) * 9,
+    blood_sugar_fasting: 84 + (i % 7) * 8,
+    creatinine: 0.7 + (i % 5) * 0.13,
+    bmi: 20 + (i % 9) * 1.5,
+    urine: URINE_CYCLE[i % URINE_CYCLE.length],
+  };
+}
 
 async function seed() {
   await connectToDatabase();
@@ -184,8 +200,6 @@ async function seed() {
     passwordHash: await hashPassword(env.SEED_ADMIN_PASSWORD),
     fullName: 'Platform Admin',
     role: 'ADMIN',
-    mrn: null,
-    dateOfBirth: null,
     isActive: true,
   });
   if (!adminBefore) usersCreated += 1;
@@ -200,6 +214,13 @@ async function seed() {
       role: 'USER',
       mrn: patient.mrn,
       dateOfBirth: new Date(patient.dateOfBirth),
+      city: patient.city,
+      state: patient.state,
+      age: patient.age,
+      gender: patient.gender,
+      occupation: patient.occupation,
+      healthCondition: patient.healthCondition,
+      beautyGoal: patient.beautyGoal,
       isActive: true,
     });
     if (!before) usersCreated += 1;
@@ -225,18 +246,20 @@ async function seed() {
       role: 'USER',
       mrn: `MRN-${2000 + i}`,
       dateOfBirth: new Date(1980 + (i % 25), i % 12, 1 + (i % 27)),
+      city: CITIES[i % CITIES.length],
+      state: STATES[i % STATES.length],
+      age: 25 + ((i * 2) % 45),
+      gender: i % 2 === 0 ? 'Female' : 'Male',
+      occupation: OCCUPATIONS[i % OCCUPATIONS.length],
+      healthCondition: CONDITIONS[i % CONDITIONS.length],
+      beautyGoal: GOALS[i % GOALS.length],
       isActive: i % 9 !== 0, // a few inactive accounts to exercise the filter
     });
     if (!before) usersCreated += 1;
 
-    const baseline = {
-      hr: 70 + (i % 15),
-      systolic: 112 + (i % 20),
-      diastolic: 72 + (i % 12),
-      glucose: 88 + (i % 18),
-      cholesterol: 175 + (i % 40),
-    };
-    const inserted = await ensureReport(buildReport(user._id, email, '2026-04-20', i, baseline));
+    const inserted = await ensureReport(
+      buildReport(user._id, email, '2026-04-20', i, fillerBaseline(i)),
+    );
     if (inserted) reportsCreated += 1;
   }
 

@@ -1,9 +1,10 @@
 # Healthcare Dashboard
 
 A small but production-minded healthcare dashboard. Patients sign in to see their
-latest health report and trends; admins search patients, drill into a record, and
-bulk-import reports from CSV. Built as a React SPA backed by a separate Express
-REST API and MongoDB.
+latest health report and trends; admins filter the client base by demographics,
+drill into a record, review population insights, and bulk-import clients and
+reports from an Excel workbook or CSV. Built as a React SPA backed by a separate
+Express REST API and MongoDB.
 
 - **Frontend** — React 19 + Vite (SPA)
 - **Backend** — Node.js + Express 5 (REST API)
@@ -29,7 +30,7 @@ REST API and MongoDB.
 `pnpm --filter @hc/api db:seed` creates the accounts below. **Passwords are
 case-sensitive.** The seed is idempotent — re-running it never changes them.
 
-**Admin** — sees the Admin Portal (patient search, detail, CSV upload):
+**Admin** — sees the Admin Portal (patient search & insights, detail, data upload):
 
 | Email                   | Password    |
 | ----------------------- | ----------- |
@@ -58,23 +59,43 @@ intentionally **inactive** to exercise the status filter.
 **Patient portal**
 
 - Email/password login with protected routes
-- Dashboard with the latest report (per-metric values, reference ranges, flags,
-  and change-since-last)
-- Interactive trend chart per metric, with the reference range drawn in
+- Dashboard with the latest report — per-metric values, reference ranges, LOW/
+  NORMAL/HIGH flags, change-since-last, and the clinician's note
+- Interactive trend chart per numeric metric, with the reference range drawn in
 - Full, paginated report history
 - Responsive across phone, tablet and desktop
 
 **Admin portal**
 
-- Patient search (debounced) with role/status filters, sortable, paginated
-- Patient detail with their report history
-- CSV upload with a first-rows preview, an inserted/skipped/failed summary, and the
-  exact failing rows; idempotent re-imports; an audit log of every upload
+- Patient search (debounced) with demographic filters — health condition, state,
+  gender — plus role/status; sortable and paginated
+- Patient detail: full demographic profile + their report history
+- Insights dashboard: population KPIs, the out-of-range rate per metric, and
+  breakdowns by condition, state, age group, gender and beauty goal
+- Upload clients + reports from an Excel workbook (or a health-report CSV) with a
+  preview/summary, the exact failing rows, idempotent re-imports, and an audit log
+
+### Health metrics
+
+Each report carries seven metrics. Six are numeric and flagged against a reference
+range; urine protein is categorical. Ranges live in one place — the API's
+[`metric-catalog.js`](apps/api/src/common/metric-catalog.js) — so adding a metric
+is a one-line change.
+
+| Metric              | Unit  | Reference (NORMAL) |
+| ------------------- | ----- | ------------------ |
+| Hemoglobin          | g/dL  | 12–17              |
+| Fasting blood sugar | mg/dL | 70–99              |
+| Total cholesterol   | mg/dL | < 200              |
+| Vitamin D           | ng/mL | 30–100             |
+| Creatinine          | mg/dL | 0.6–1.3            |
+| BMI                 | kg/m² | 18.5–24.9          |
+| Urine protein       | —     | Negative           |
 
 ## Architecture
 
 See **[docs/architecture.md](docs/architecture.md)** for the system topology and
-the auth and CSV-ingestion flows (diagrams render on GitHub).
+the auth and data-ingestion flows (diagrams render on GitHub).
 
 In one line: the browser loads the SPA from a CDN; the SPA calls the Express API
 over HTTPS with a Bearer access token; the API validates, authorizes and talks to
@@ -89,7 +110,7 @@ health-care-project/
 │  ├─ web/                  # React + Vite SPA
 │  │  └─ src/
 │  │     ├─ app/            # router, providers, route guards, query client
-│  │     ├─ features/       # vertical slices: auth, reports, admin, uploads
+│  │     ├─ features/       # vertical slices: auth, reports, admin, uploads, insights
 │  │     ├─ components/     # ui/ primitives + common/ (DataState, Pagination…)
 │  │     ├─ layouts/        # AuthLayout, AppShell (responsive nav)
 │  │     ├─ lib/            # api-client (single-flight refresh), token-store
@@ -163,25 +184,40 @@ Base path `/api/v1`. Every response uses one envelope:
 | GET    | `/me/reports/latest`       | auth          | latest report                                |
 | GET    | `/me/reports`              | auth          | paginated history (`?page&pageSize&from&to`) |
 | GET    | `/me/reports/:id`          | auth          | one report (ownership-scoped)                |
-| GET    | `/admin/users`             | admin         | search/filter/sort/paginate patients         |
+| GET    | `/admin/users`             | admin         | search + demographic filters, sort, paginate |
 | GET    | `/admin/users/:id`         | admin         | patient detail + report count                |
 | GET    | `/admin/users/:id/reports` | admin         | a patient's paginated reports                |
-| POST   | `/admin/reports/upload`    | admin         | import CSV → batch summary                   |
+| GET    | `/admin/facets`            | admin         | distinct values for the filter dropdowns     |
+| GET    | `/admin/insights`          | admin         | population analytics (charts data)           |
+| POST   | `/admin/reports/upload`    | admin         | import xlsx/CSV → batch summary              |
 | GET    | `/admin/uploads` / `/:id`  | admin         | import audit log                             |
 | GET    | `/healthz`, `/readyz`      | public        | liveness / readiness                         |
 
-### CSV format
+### Data import
 
-One row per report; header required. A sample lives in [`seed/sample-reports.csv`](seed/sample-reports.csv).
+The admin **Uploads** page accepts two shapes:
+
+- **Excel workbook (`.xlsx`)** — the clinic's export, with a `clients` sheet and a
+  `health_reports` sheet linked by `client_id`. Clients are upserted (a re-import
+  updates demographics in place); their reports are attached and deduplicated by
+  the dataset's own `report_id`.
+- **Health-report CSV** — one row per report for clients that already exist, linked
+  by `client_id` or `email`. A sample lives in [`seed/sample-reports.csv`](seed/sample-reports.csv):
 
 ```csv
-email,report_date,source,hr,systolic,diastolic,glucose,cholesterol
-jane.doe@healthcare.test,2026-05-15,acme-lab,71,119,77,90,182
+email,report_date,hemoglobin,vitamin_d,cholesterol,blood_sugar_fasting,creatinine,urine_protein,bmi,doctor_notes
+jane.doe@healthcare.test,2026-05-15,13.6,55,184,92,0.9,Negative,22.4,Normal findings
 ```
 
-Each row is validated independently: a bad email, non-ISO date or out-of-range
-value fails just that row and is reported back with its line number. Re-importing
-the same file is a no-op (rows are deduplicated by patient + date + source).
+Every row is validated independently: a bad email, a non-ISO date, an out-of-range
+value or an unknown `urine_protein` label fails just that row — reported back with
+its sheet and line number, while the good rows still import (partial success).
+Re-importing the same file is a no-op.
+
+**Loading the company dataset:** sign in as the admin, open **Uploads → Upload
+data**, and choose the provided `.xlsx`. It imports ~5,000 clients and ~25,000
+reports in a few seconds, after which the patient list, filters and Insights
+populate immediately.
 
 ## Testing & CI
 
@@ -232,4 +268,7 @@ Finally, set the API's `CORS_ORIGIN` to the Vercel URL and redeploy.
 - Add Atlas Search (or a denormalized search field) for large-scale patient search.
 - End-to-end tests (Playwright) for the login → dashboard and upload flows.
 - An audit trail for admin actions and per-request OpenAPI docs.
-- Stream very large CSVs and process them in a background job with progress.
+- Process very large uploads in a background job with progress — the synchronous
+  path comfortably handles the ~25k-row dataset, but a million-row file should queue.
+- Gender-aware reference ranges (e.g. hemoglobin) and a categorical urine-protein
+  timeline on the trend chart.

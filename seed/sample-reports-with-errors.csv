@@ -1,6 +1,6 @@
-email,report_date,source,hr,systolic,diastolic,glucose,cholesterol
-jane.doe@healthcare.test,2026-06-15,acme-lab,70,118,76,91,180
-not-an-email,2026-06-15,acme-lab,70,120,80,95,180
-john.smith@healthcare.test,15/06/2026,acme-lab,80,130,84,105,205
-maria.garcia@healthcare.test,2026-06-15,acme-lab,66,110,70,9999,168
-ghost.user@healthcare.test,2026-06-15,acme-lab,70,120,80,95,180
+email,report_date,hemoglobin,vitamin_d,cholesterol,blood_sugar_fasting,creatinine,urine_protein,bmi,doctor_notes
+jane.doe@healthcare.test,2026-06-15,13.5,54,182,91,0.9,Negative,22.3,Normal findings
+not-an-email,2026-06-15,13.5,54,182,91,0.9,Negative,22.3,Invalid email address
+john.smith@healthcare.test,15/06/2026,14.2,24,222,116,1.15,Trace,29.4,Date not ISO format
+maria.garcia@healthcare.test,2026-06-15,13.1,62,172,9999,0.8,Negative,21.3,Fasting sugar out of range
+ghost.user@healthcare.test,2026-06-15,13.5,54,182,91,0.9,Maybe,22.3,Unknown client and bad urine value

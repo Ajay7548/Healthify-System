@@ -28,7 +28,7 @@ flowchart TB
     helmet · CORS · rate-limit · Zod validation
     authenticate -> requireRole -> validate
     routes -> controllers -> services -> repositories
-    Multer + csv-parse ingestion · pino logs"]
+    Multer + exceljs/csv ingestion · insights aggregation · pino logs"]
   end
 
   subgraph Atlas["MongoDB Atlas (free M0)"]
@@ -91,10 +91,11 @@ sequenceDiagram
   API-->>SPA: 401 — sign in again
 ```
 
-## CSV ingestion flow
+## Data ingestion flow
 
-One uploaded row is one health report. The pipeline favours partial success —
-one bad row never sinks the whole file — and every import is auditable.
+An upload is either the clinic's `.xlsx` (a `clients` sheet + a `health_reports`
+sheet, linked by `client_id`) or a health-report CSV. The pipeline favours partial
+success — one bad row never sinks the whole file — and every import is auditable.
 
 ```mermaid
 sequenceDiagram
@@ -102,17 +103,28 @@ sequenceDiagram
   participant API as Express API
   participant DB as MongoDB
 
-  Admin->>API: POST /admin/reports/upload (multipart CSV)
+  Admin->>API: POST /admin/reports/upload (multipart xlsx/CSV)
   API->>DB: create UploadBatch (status PROCESSING)
-  API->>API: parse CSV; validate each row with Zod
-  API->>DB: resolve emails -> users (one query)
-  API->>API: dedupe within file; build report docs
+  API->>API: parse workbook (exceljs) or CSV -> normalized rows
+
+  Note over API,DB: phase 1 — clients (xlsx only)
+  API->>API: validate client rows with Zod
+  API->>DB: bulkWrite upsert by client_id (created vs updated)
+
+  Note over API,DB: phase 2 — reports
+  API->>API: validate report rows; resolve client_id/email -> userId
+  API->>API: dedupe by report_id within the file; build report docs
   API->>DB: find existing (userId, dedupeKey) — skip those
-  API->>DB: insertMany(ordered:false) the new rows
-  API->>DB: finalize batch (COMPLETED | PARTIAL | FAILED) + per-row errors
-  API-->>Admin: 201 { inserted, skipped, failed, errors[] }
-  Note over Admin: re-uploading the same file -> all skipped (idempotent)
+  API->>DB: insertMany(ordered:false) in chunks
+  API->>DB: finalize batch (COMPLETED | PARTIAL | FAILED) + per-sheet errors
+  API-->>Admin: 201 { clientsCreated, clientsUpdated, inserted, skipped, failed, errors[] }
+  Note over Admin: re-uploading the same file -> clients updated, reports all skipped
 ```
+
+Population analytics for the Insights dashboard (`GET /admin/insights`) are
+computed with MongoDB aggregation — demographic group-bys over `users`, and a
+single `$facet` pass over each client's latest report for the abnormal-rate
+breakdowns.
 
 ## Why these shapes
 

@@ -1,5 +1,5 @@
-email,report_date,source,hr,systolic,diastolic,glucose,cholesterol
-jane.doe@healthcare.test,2026-05-15,acme-lab,71,119,77,90,182
-john.smith@healthcare.test,2026-05-15,acme-lab,82,132,85,108,210
-maria.garcia@healthcare.test,2026-05-15,acme-lab,66,111,71,86,168
-john.smith@healthcare.test,2026-05-28,acme-lab,85,136,88,114,219
+email,report_date,hemoglobin,vitamin_d,cholesterol,blood_sugar_fasting,creatinine,urine_protein,bmi,doctor_notes
+jane.doe@healthcare.test,2026-05-15,13.6,55,184,92,0.9,Negative,22.4,Normal findings
+john.smith@healthcare.test,2026-05-15,14.2,24,222,116,1.15,Trace,29.4,Needs lifestyle changes
+maria.garcia@healthcare.test,2026-05-15,13.1,62,172,86,0.8,Negative,21.3,Normal findings
+john.smith@healthcare.test,2026-05-28,14.0,26,228,120,1.2,Trace,29.8,Monitor sugar levels
