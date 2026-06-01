@@ -3,8 +3,8 @@ import { Schema, model } from 'mongoose';
 const userSchema = new Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    // Optional: clients imported from a dataset have no portal login until one is
-    // granted. The login path rejects credential-less accounts (see auth.service).
+    // Imported clients are created with a shared demo password (see upload.service);
+    // any account that still has no hash is rejected by the login path (auth.service).
     passwordHash: { type: String, default: null },
     fullName: { type: String, required: true, trim: true },
     role: { type: String, enum: ['USER', 'ADMIN'], default: 'USER', required: true, index: true },

@@ -4,7 +4,7 @@ import { CLIENT_HEADERS, HEALTH_REPORT_HEADERS } from '../validation/index.js';
 import { setupTestDb, teardownTestDb, clearCollections } from './db.js';
 import { User } from '../models/user.model.js';
 import { HealthReport } from '../models/health-report.model.js';
-import { hashPassword } from '../utils/password.js';
+import { hashPassword, verifyPassword } from '../utils/password.js';
 import { ingestUpload } from '../services/upload.service.js';
 
 let adminId;
@@ -100,8 +100,28 @@ describe('xlsx ingestion', () => {
     const alice = await User.findOne({ clientId: 1 }).lean();
     expect(alice.fullName).toBe('Alice A');
     expect(alice.state).toBe('Maharashtra');
-    expect(alice.passwordHash).toBeNull(); // imported clients can't log in
+    // Imported clients get the shared demo password so a reviewer can sign in.
+    expect(await verifyPassword('Patient123!', alice.passwordHash)).toBe(true);
     expect(await HealthReport.countDocuments()).toBe(2);
+  });
+
+  it('sets the demo password on insert but never overwrites it on re-import', async () => {
+    const buffer = await buildXlsx({
+      clients: [CLIENTS[0]],
+      reports: [{ report_id: 'RPT1', client_id: 1, report_date: '2026-01-01', ...NORMAL }],
+    });
+    await ingest(buffer);
+
+    // The client later changes their password.
+    await User.updateOne({ clientId: 1 }, { passwordHash: await hashPassword('Changed456!') });
+
+    // A re-import updates demographics ($set) but must not reset the password
+    // ($setOnInsert only applies to brand-new clients).
+    await ingest(buffer);
+
+    const alice = await User.findOne({ clientId: 1 }).lean();
+    expect(await verifyPassword('Changed456!', alice.passwordHash)).toBe(true);
+    expect(await verifyPassword('Patient123!', alice.passwordHash)).toBe(false);
   });
 
   it('computes numeric flags and stores the categorical urine result', async () => {

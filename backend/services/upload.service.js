@@ -7,6 +7,7 @@ import { NotFoundError } from '../utils/errors.js';
 import { buildMetrics } from '../utils/metric-catalog.js';
 import { reportDedupeKey } from '../utils/dedupe.js';
 import { getSkip, buildPaginationMeta } from '../utils/pagination.js';
+import { hashPassword } from '../utils/password.js';
 import { User } from '../models/user.model.js';
 import { HealthReport } from '../models/health-report.model.js';
 import { UploadBatch } from '../models/upload-batch.model.js';
@@ -20,6 +21,10 @@ const MAX_CLIENT_ROWS = 20_000;
 const MAX_STORED_ERRORS = 200;
 // Insert reports in chunks so a 25k-row file is never one giant write.
 const INSERT_CHUNK = 2_000;
+// Imported clients ship no credentials, so each new one is created with a shared
+// demo password — a reviewer can then sign in as any imported patient. Applied on
+// insert only (see upsertClients), so a re-import never resets an existing login.
+const DEFAULT_CLIENT_PASSWORD = 'Patient123!';
 
 function toBatchDto(doc) {
   return {
@@ -119,6 +124,9 @@ async function upsertClients(rows, errors) {
   const failedRows = new Set();
   const ops = [];
   const now = new Date();
+  // Hash once and reuse for every client inserted in this batch — hashing each of
+  // thousands of rows would cost minutes, and they all share the same demo password.
+  const passwordHash = await hashPassword(DEFAULT_CLIENT_PASSWORD);
   for (const { row, data } of rows) {
     const parsed = clientRowSchema.safeParse(data);
     if (!parsed.success) {
@@ -153,6 +161,9 @@ async function upsertClients(rows, errors) {
           },
           $setOnInsert: {
             clientId: c.client_id,
+            // Shared demo password, set on first import only — never overwritten
+            // on a re-import, so a changed password survives.
+            passwordHash,
             role: 'USER',
             isActive: true,
             // Preserve the dataset's signup date as "member since".

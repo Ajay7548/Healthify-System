@@ -43,17 +43,17 @@ describe('auth', () => {
     expect(res.body.error.message).toBe('Invalid email or password');
   });
 
-  it('rejects login for an imported client with no password (401, not 500)', async () => {
+  it('rejects login for a credential-less account (401, not 500)', async () => {
     await User.create({
-      email: 'imported@test.dev',
-      fullName: 'Imported Client',
+      email: 'no-password@test.dev',
+      fullName: 'No Password',
       role: 'USER',
       isActive: true,
       // no passwordHash
     });
     const res = await request(app)
       .post('/api/v1/auth/login')
-      .send({ email: 'imported@test.dev', password: 'anything' });
+      .send({ email: 'no-password@test.dev', password: 'anything' });
     expect(res.status).toBe(401);
     expect(res.body.error.message).toBe('Invalid email or password');
   });
