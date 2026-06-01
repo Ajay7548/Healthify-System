@@ -1,11 +1,9 @@
 # Dependencies
 node_modules/
-.pnpm-store/
 
 # Build output
 dist/
 build/
-*.tsbuildinfo
 
 # Environment — never commit real secrets
 .env
@@ -15,7 +13,6 @@ build/
 # Logs
 *.log
 npm-debug.log*
-pnpm-debug.log*
 
 # Test / coverage
 coverage/

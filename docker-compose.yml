@@ -1,5 +1,5 @@
 # One-command local backend: MongoDB + the API (seeded), plus a DB browser.
-# The web app runs separately with `pnpm --filter @hc/web dev` (HMR), proxying
+# The web app runs separately with `cd frontend && npm run dev` (HMR), proxying
 # /api to the API on :4000.
 #
 #   docker compose up --build
@@ -21,14 +21,13 @@ services:
 
   api:
     build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+      context: ./backend
     restart: unless-stopped
     depends_on:
       mongo:
         condition: service_healthy
     # Seed (idempotent) then start the server.
-    command: sh -c "node src/db/seed.js && node src/server.js"
+    command: sh -c "node scripts/seed.js && node server.js"
     environment:
       NODE_ENV: production
       PORT: 4000

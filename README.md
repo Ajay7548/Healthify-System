@@ -11,8 +11,9 @@ Express REST API and MongoDB.
 - **Database** — MongoDB + Mongoose
 - **Auth** — JWT access + refresh tokens with rotation and reuse-detection
 
-> Plain JavaScript throughout (ESM), in a pnpm monorepo with a shared validation
-> package so the client and server can't drift apart.
+> Plain JavaScript throughout (ESM). The frontend and backend are separate npm
+> projects; both carry the same Zod validation schemas, so the client and server
+> can't drift apart.
 
 ## Live demo
 
@@ -27,7 +28,7 @@ Express REST API and MongoDB.
 
 ## Demo accounts
 
-`pnpm --filter @hc/api db:seed` creates the accounts below. **Passwords are
+`cd backend && npm run db:seed` creates the accounts below. **Passwords are
 case-sensitive.** The seed is idempotent — re-running it never changes them.
 
 **Admin** — sees the Admin Portal (patient search & insights, detail, data upload):
@@ -50,7 +51,7 @@ results. All use password `Patient123!` and are emailed `firstname.lastname@heal
 intentionally **inactive** to exercise the status filter.
 
 > The admin email/password come from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` in
-> `apps/api/.env` — the values above are the `.env.example` defaults. If you changed
+> `backend/.env` — the values above are the `.env.example` defaults. If you changed
 > them, your admin login matches what you set. The shared patient password is a demo
 > convenience (and is flagged as such in the seed).
 
@@ -79,7 +80,7 @@ intentionally **inactive** to exercise the status filter.
 
 Each report carries seven metrics. Six are numeric and flagged against a reference
 range; urine protein is categorical. Ranges live in one place — the API's
-[`metric-catalog.js`](apps/api/src/common/metric-catalog.js) — so adding a metric
+[`metric-catalog.js`](backend/utils/metric-catalog.js) — so adding a metric
 is a one-line change.
 
 | Metric              | Unit  | Reference (NORMAL) |
@@ -106,50 +107,61 @@ gives revocable sessions without cookies.
 
 ```
 health-care-project/
-├─ apps/
-│  ├─ web/                  # React + Vite SPA
-│  │  └─ src/
-│  │     ├─ app/            # router, providers, route guards, query client
-│  │     ├─ features/       # vertical slices: auth, reports, admin, uploads, insights
-│  │     ├─ components/     # ui/ primitives + common/ (DataState, Pagination…)
-│  │     ├─ layouts/        # AuthLayout, AppShell (responsive nav)
-│  │     ├─ lib/            # api-client (single-flight refresh), token-store
-│  │     └─ pages/          # one component per route
-│  └─ api/                  # Express REST API — the only backend
-│     └─ src/
-│        ├─ config/         # env (Zod, fail-fast), logger, db
-│        ├─ middleware/     # authenticate, requireRole, validate, errors, upload…
-│        ├─ modules/        # feature-first: auth, users, reports, uploads, health
-│        ├─ common/         # errors, response envelope, pagination, password, dedupe
-│        └─ db/seed.js      # idempotent seed (admin + demo patients + history)
-├─ packages/
-│  └─ shared/               # @hc/shared — Zod schemas shared by both apps
+├─ backend/                 # Express REST API — the only backend
+│  ├─ config/               # env (Zod, fail-fast), logger
+│  ├─ controllers/          # HTTP handlers, one per resource
+│  ├─ middleware/           # authenticate, requireRole, validate, errors, upload…
+│  ├─ models/               # Mongoose schemas (user, health-report, …)
+│  ├─ routes/               # route definitions wired to controllers
+│  ├─ services/             # business logic + repositories (data access)
+│  ├─ validation/           # Zod schemas (request input + response contract)
+│  ├─ utils/                # errors, response envelope, pagination, password, dedupe
+│  ├─ scripts/seed.js       # idempotent seed (admin + demo patients + history)
+│  ├─ tests/                # Vitest integration tests (in-memory MongoDB)
+│  ├─ app.js                # Express app assembly (middleware + routers)
+│  ├─ routes.js             # /api/v1 router — wires the route modules together
+│  ├─ db.js                 # Mongoose connection
+│  └─ server.js             # entry point — connects, then listens
+├─ frontend/                # React + Vite SPA
+│  └─ src/
+│     ├─ api/               # API clients, one per resource
+│     ├─ components/        # ui/ primitives + shared components + layouts
+│     ├─ context/           # auth context + provider
+│     ├─ hooks/             # TanStack Query hooks + helpers
+│     ├─ lib/               # api-client (single-flight refresh), token-store, schemas
+│     ├─ pages/             # one component per route
+│     └─ App.jsx            # providers + router + route guards
 ├─ seed/                    # sample CSVs (clean + intentionally broken)
 ├─ docs/architecture.md     # diagrams + design notes
-├─ docker-compose.yml       # one-command local backend (Mongo + API + browser)
-└─ .github/workflows/ci.yml # lint -> test -> build
+└─ docker-compose.yml       # one-command local backend (Mongo + API + browser)
 ```
 
 The API follows a conventional layering — **routes → controllers → services →
 repositories** — so HTTP concerns, business logic and data access stay separate and
-testable.
+testable. The same Zod schemas live in `backend/validation` and `frontend/src/lib/schemas`;
+a contract test asserts the API's responses match them so the two copies can't drift.
 
 ## Running locally
 
-**Prerequisites:** Node ≥ 20.19, pnpm 10, and either a local MongoDB on `:27017`
-or Docker.
+**Prerequisites:** Node ≥ 20.19 and either a local MongoDB on `:27017` or Docker.
 
-```bash
-pnpm install
-```
+The backend and frontend are independent npm projects — install and run each.
 
 ### Option A — local MongoDB (fastest for development)
 
 ```bash
-cp apps/api/.env.example apps/api/.env     # defaults point at localhost:27017
-cp apps/web/.env.example apps/web/.env
-pnpm --filter @hc/api db:seed              # admin + demo patients with history
-pnpm dev                                   # API on :4000, web on :5173
+# 1. API (first terminal)
+cd backend
+cp .env.example .env       # defaults point at localhost:27017
+npm install
+npm run db:seed            # admin + demo patients with history
+npm run dev                # API on :4000
+
+# 2. SPA (second terminal)
+cd frontend
+cp .env.example .env
+npm install
+npm run dev                # web on :5173
 ```
 
 Open http://localhost:5173 and sign in with a demo account above.
@@ -157,8 +169,8 @@ Open http://localhost:5173 and sign in with a demo account above.
 ### Option B — Docker (no local Node/Mongo needed for the backend)
 
 ```bash
-docker compose up --build                  # Mongo + seeded API + DB browser
-pnpm --filter @hc/web dev                  # the SPA, proxying /api to the API
+docker compose up --build                    # Mongo + seeded API + DB browser
+cd frontend && npm install && npm run dev    # the SPA, proxying /api to the API
 ```
 
 - API: http://localhost:4000 · Web: http://localhost:5173 · DB browser: http://localhost:8081
@@ -167,8 +179,10 @@ pnpm --filter @hc/web dev                  # the SPA, proxying /api to the API
 ## Environment
 
 The API validates its environment at startup and refuses to boot on anything
-missing or malformed. See [`.env.example`](.env.example) for the annotated list.
-Only `VITE_`-prefixed variables reach the browser bundle — never put secrets there.
+missing or malformed. See [`backend/.env.example`](backend/.env.example) for the
+annotated list; the web app's single variable is in
+[`frontend/.env.example`](frontend/.env.example). Only `VITE_`-prefixed variables
+reach the browser bundle — never put secrets there.
 
 ## API reference
 
@@ -219,15 +233,17 @@ data**, and choose the provided `.xlsx`. It imports ~5,000 clients and ~25,000
 reports in a few seconds, after which the patient list, filters and Insights
 populate immediately.
 
-## Testing & CI
+## Testing
+
+Each project is linted and tested independently; the web app also builds:
 
 ```bash
-pnpm lint      # ESLint across the workspace
-pnpm test      # Vitest — API integration (in-memory MongoDB) + web component tests
-pnpm build     # production build
+cd backend  && npm run lint && npm test                 # API integration tests (in-memory MongoDB)
+cd frontend && npm run lint && npm test && npm run build # component tests + production build
 ```
 
-GitHub Actions runs all three on every push and pull request.
+The backend's integration tests spin up an in-memory MongoDB, so no external
+database is needed to run them.
 
 ## Deployment
 
@@ -235,13 +251,13 @@ Three independent pieces. The whole thing runs on free tiers.
 
 1. **Database — MongoDB Atlas.** Create a free M0 cluster, add a database user, and
    allow network access (`0.0.0.0/0` for the demo). Copy the SRV connection string.
-2. **API — Render.** New → Blueprint, point it at this repo ([`render.yaml`](render.yaml)
-   is picked up automatically). Set the three secrets it asks for: `MONGODB_URI`
-   (Atlas), `CORS_ORIGIN` (your Vercel URL), and `SEED_ADMIN_PASSWORD`. JWT secrets
-   are generated for you. The pre-deploy step seeds the demo data.
-3. **Web — Vercel.** Import the repo, set **Root Directory** to `apps/web`, and add
-   `VITE_API_BASE_URL = https://<your-api>.onrender.com/api/v1`. [`vercel.json`](apps/web/vercel.json)
-   handles the SPA rewrite.
+2. **API — Render.** New → Web Service, point it at this repo with **Root Directory**
+   `backend` (it builds from `backend/Dockerfile`). Set `MONGODB_URI` (Atlas),
+   `CORS_ORIGIN` (your Vercel URL), `SEED_ADMIN_PASSWORD`, and the two JWT secrets.
+   Run `node scripts/seed.js` once (or as a pre-deploy command) to seed the demo data.
+3. **Web — Vercel.** Import the repo, set **Root Directory** to `frontend`, and add
+   `VITE_API_BASE_URL = https://<your-api>.onrender.com/api/v1`.
+   [`frontend/vercel.json`](frontend/vercel.json) handles the SPA rewrite.
 
 Finally, set the API's `CORS_ORIGIN` to the Vercel URL and redeploy.
 

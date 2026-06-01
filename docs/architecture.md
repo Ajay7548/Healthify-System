@@ -37,9 +37,8 @@ flowchart TB
     indexes built on boot · idempotent seed")]
   end
 
-  subgraph GitHub["GitHub + Actions"]
-    REPO["Repo (pnpm monorepo)"]
-    CI["CI: lint -> test -> build"]
+  subgraph GitHub["GitHub"]
+    REPO["Repo (backend + frontend)"]
   end
 
   SPA -->|"1 GET app shell (HTTPS)"| CDN
@@ -49,10 +48,9 @@ flowchart TB
   CORS-restricted to the SPA origin"| API
   API -->|"3 queries over TLS"| DB
 
-  REPO --> CI
-  CI -->|"on green: deploy"| CDN
-  CI -->|"on green: deploy"| API
-  API -. "pre-deploy: idempotent seed" .-> DB
+  REPO -->|"deploy frontend (Root Directory: frontend)"| CDN
+  REPO -->|"deploy backend (Root Directory: backend)"| API
+  API -. "seed: idempotent demo data" .-> DB
 
   classDef cloud fill:#eef2ff,stroke:#6366f1;
   class Vercel,Render,Atlas cloud;
