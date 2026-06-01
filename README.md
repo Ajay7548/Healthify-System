@@ -37,18 +37,15 @@ case-sensitive.** The seed is idempotent — re-running it never changes them.
 | ----------------------- | ----------- |
 | `admin@healthcare.test` | `Admin123!` |
 
-**Featured patients** — Patient Portal, each with ~6 months of report history:
+**Demo patient** — Patient Portal, with ~6 months of report history:
 
-| Email                          | Password      | Notes                                                           |
-| ------------------------------ | ------------- | --------------------------------------------------------------- |
-| `jane.doe@healthcare.test`     | `Patient123!` | Healthy, in-range readings                                      |
-| `john.smith@healthcare.test`   | `Patient123!` | Borderline-high readings (HIGH flags + crossed reference lines) |
-| `maria.garcia@healthcare.test` | `Patient123!` | Healthy                                                         |
+| Email                      | Password      | Notes                      |
+| -------------------------- | ------------- | -------------------------- |
+| `jane.doe@healthcare.test` | `Patient123!` | Healthy, in-range readings |
 
-**Filler patients** — ~27 more patients so the admin list paginates and search has
-results. All use password `Patient123!` and are emailed `firstname.lastname@healthcare.test`
-(e.g. `liam.johnson@healthcare.test`, `olivia.williams@healthcare.test`). A few are
-intentionally **inactive** to exercise the status filter.
+The seed is intentionally minimal — one admin and one patient. The wider client
+base is loaded through the admin **Uploads** page; imported clients are created
+with the same `Patient123!` password, so you can sign in as any of them.
 
 > The admin email/password come from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` in
 > `backend/.env` — the values above are the `.env.example` defaults. If you changed

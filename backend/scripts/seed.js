@@ -14,10 +14,9 @@ import { HealthReport } from '../models/health-report.model.js';
 const PATIENT_PASSWORD = 'Patient123!';
 const SEED_SOURCE = 'seed-clinic';
 
-// Three "featured" patients get six months of history so the dashboard charts
-// have a real trend to draw. John sits in borderline-high territory on purpose
-// so HIGH/LOW flags and reference ranges are visible in the UI.
-const FEATURED_PATIENTS = [
+// The demo patient gets six months of history so the dashboard charts and trend
+// lines have real data to draw.
+const DEMO_PATIENTS = [
   {
     email: 'jane.doe@healthcare.test',
     fullName: 'Jane Doe',
@@ -37,50 +36,6 @@ const FEATURED_PATIENTS = [
       blood_sugar_fasting: 92,
       creatinine: 0.9,
       bmi: 22.5,
-      urine: 'Negative',
-    },
-  },
-  {
-    email: 'john.smith@healthcare.test',
-    fullName: 'John Smith',
-    dateOfBirth: '1978-09-30',
-    mrn: 'MRN-1002',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    age: 47,
-    gender: 'Male',
-    occupation: 'Manager',
-    healthCondition: 'High Cholesterol',
-    beautyGoal: 'Weight Loss',
-    baseline: {
-      hemoglobin: 14.2,
-      vitamin_d: 24, // < 30 -> LOW
-      cholesterol: 224, // > 200 -> HIGH
-      blood_sugar_fasting: 116, // > 99 -> HIGH
-      creatinine: 1.15,
-      bmi: 29.4, // > 24.9 -> HIGH
-      urine: 'Trace', // -> HIGH
-    },
-  },
-  {
-    email: 'maria.garcia@healthcare.test',
-    fullName: 'Maria Garcia',
-    dateOfBirth: '1992-01-22',
-    mrn: 'MRN-1003',
-    city: 'Bengaluru',
-    state: 'Karnataka',
-    age: 34,
-    gender: 'Female',
-    occupation: 'Engineer',
-    healthCondition: 'Healthy',
-    beautyGoal: 'Skin Glow',
-    baseline: {
-      hemoglobin: 13.1,
-      vitamin_d: 62,
-      cholesterol: 172,
-      blood_sugar_fasting: 86,
-      creatinine: 0.8,
-      bmi: 21.3,
       urine: 'Negative',
     },
   },
@@ -153,39 +108,6 @@ async function ensureReport(report) {
   return Boolean(result.upsertedCount);
 }
 
-// A pool of filler patients so the admin list paginates and the filters/insights
-// have spread. One recent report each — enough to show a "last report" date.
-const FILLER_FIRST_NAMES = [
-  'Liam', 'Olivia', 'Noah', 'Emma', 'Oliver', 'Ava', 'Elijah', 'Sophia', 'James',
-  'Isabella', 'William', 'Mia', 'Henry', 'Amelia', 'Lucas', 'Harper', 'Benjamin',
-  'Evelyn', 'Theodore', 'Abigail', 'Jack', 'Ella', 'Leo', 'Scarlett', 'Daniel',
-  'Grace', 'Owen',
-];
-const FILLER_LAST_NAMES = [
-  'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Wilson', 'Anderson',
-  'Taylor', 'Thomas', 'Moore', 'Jackson', 'Martin', 'Lee', 'Walker', 'Hall', 'Allen',
-  'Young', 'King', 'Wright', 'Scott', 'Green', 'Baker', 'Adams', 'Nelson', 'Hill',
-  'Campbell',
-];
-const CITIES = ['Pune', 'Mumbai', 'Delhi', 'Bengaluru', 'Chennai', 'Kolkata', 'Hyderabad', 'Ahmedabad', 'Kochi', 'Indore'];
-const STATES = ['Maharashtra', 'Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'West Bengal', 'Telangana', 'Gujarat', 'Kerala', 'Madhya Pradesh'];
-const CONDITIONS = ['Healthy', 'Diabetes', 'Hypertension', 'Obesity', 'Thyroid', 'PCOS', 'Anemia', 'High Cholesterol', 'Vitamin D Deficiency'];
-const GOALS = ['Fitness', 'Weight Loss', 'Skin Glow', 'Hair Care', 'Anti Aging', 'Stress Management', 'Acne Treatment'];
-const OCCUPATIONS = ['Engineer', 'Teacher', 'Doctor', 'Manager', 'Business', 'Student'];
-const URINE_CYCLE = ['Negative', 'Negative', 'Trace', 'Positive'];
-
-function fillerBaseline(i) {
-  return {
-    hemoglobin: 12.4 + (i % 5) * 0.8,
-    vitamin_d: 26 + (i % 6) * 9,
-    cholesterol: 168 + (i % 8) * 9,
-    blood_sugar_fasting: 84 + (i % 7) * 8,
-    creatinine: 0.7 + (i % 5) * 0.13,
-    bmi: 20 + (i % 9) * 1.5,
-    urine: URINE_CYCLE[i % URINE_CYCLE.length],
-  };
-}
-
 async function seed() {
   await connectToDatabase();
   await syncIndexes();
@@ -204,8 +126,8 @@ async function seed() {
   });
   if (!adminBefore) usersCreated += 1;
 
-  // 2. Featured patients with six months of history.
-  for (const patient of FEATURED_PATIENTS) {
+  // 2. Demo patient with six months of history.
+  for (const patient of DEMO_PATIENTS) {
     const before = await User.countDocuments({ email: patient.email });
     const user = await ensureUser({
       email: patient.email,
@@ -233,36 +155,6 @@ async function seed() {
     }
   }
 
-  // 3. Filler patients for pagination/search, one recent report each.
-  for (let i = 0; i < FILLER_FIRST_NAMES.length; i += 1) {
-    const first = FILLER_FIRST_NAMES[i] ?? 'Patient';
-    const last = FILLER_LAST_NAMES[i] ?? `No${i}`;
-    const email = `${first}.${last}@healthcare.test`.toLowerCase();
-    const before = await User.countDocuments({ email });
-    const user = await ensureUser({
-      email,
-      passwordHash: await hashPassword(PATIENT_PASSWORD),
-      fullName: `${first} ${last}`,
-      role: 'USER',
-      mrn: `MRN-${2000 + i}`,
-      dateOfBirth: new Date(1980 + (i % 25), i % 12, 1 + (i % 27)),
-      city: CITIES[i % CITIES.length],
-      state: STATES[i % STATES.length],
-      age: 25 + ((i * 2) % 45),
-      gender: i % 2 === 0 ? 'Female' : 'Male',
-      occupation: OCCUPATIONS[i % OCCUPATIONS.length],
-      healthCondition: CONDITIONS[i % CONDITIONS.length],
-      beautyGoal: GOALS[i % GOALS.length],
-      isActive: i % 9 !== 0, // a few inactive accounts to exercise the filter
-    });
-    if (!before) usersCreated += 1;
-
-    const inserted = await ensureReport(
-      buildReport(user._id, email, '2026-04-20', i, fillerBaseline(i)),
-    );
-    if (inserted) reportsCreated += 1;
-  }
-
   const totalUsers = await User.countDocuments();
   const totalReports = await HealthReport.countDocuments();
   logger.info(
@@ -274,13 +166,6 @@ async function seed() {
   console.log('\nDemo credentials');
   console.log('  Admin   ', env.SEED_ADMIN_EMAIL, '/', env.SEED_ADMIN_PASSWORD);
   console.log('  Patient ', 'jane.doe@healthcare.test', '/', PATIENT_PASSWORD);
-  console.log(
-    '  Patient ',
-    'john.smith@healthcare.test',
-    '/',
-    PATIENT_PASSWORD,
-    '(borderline-high readings)',
-  );
   console.log('');
 
   await disconnectFromDatabase();
