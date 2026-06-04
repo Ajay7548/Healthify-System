@@ -15,7 +15,7 @@ Express REST API and MongoDB.
 > projects; both carry the same Zod validation schemas, so the client and server
 > can't drift apart.
 
-## Live demo
+## Live demo ([https://healthify-system.vercel.app/login])
 
 |         | URL                               |
 | ------- | --------------------------------- |
